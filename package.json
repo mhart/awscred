@@ -1,0 +1,16 @@
+{
+  "name": "aws-credentials",
+  "version": "1.0.0",
+  "description": "Resolves AWS credentials (and region) using env, file and IAM strategies",
+  "main": "index.js",
+  "repository": "mhart/aws-credentials",
+  "keywords": [
+    "aws",
+    "credentials",
+    "region",
+    "resolver",
+    "resolve"
+  ],
+  "author": "Michael Hart <michael.hart.au@gmail.com>",
+  "license": "MIT"
+}
