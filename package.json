@@ -1,6 +1,6 @@
 {
   "name": "aws-credentials",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Resolves AWS credentials (and region) using env, file and IAM strategies",
   "main": "index.js",
   "repository": "mhart/aws-credentials",
