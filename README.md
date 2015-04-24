@@ -3,8 +3,8 @@ awscred
 
 A small standalone library to resolve AWS credentials and region details
 using, in order: environment variables, INI files, and EC2 metadata (for IAM
-roles). Robust retries in the face of HTTP errors, and queues calls to ensure
-no thundering herd effect will occur when credentials expire.
+roles). Queues HTTP calls to ensure no thundering herd effect will occur when
+credentials expire.
 
 Example
 -------
@@ -40,6 +40,8 @@ Resolves AWS credentials and region details, and calls back with an object conta
   - `filename`: the name of the INI file to parse, defaults to `'~/.aws/config'`
   - `profile`: the name of the INI profile to use, defaults to `'default'`
   - `timeout`: the ms timeout on the http call to the EC2 metadata service, defaults to `5000`
+  - `credentialsCallChain`: array of functions to resolve credentials, defaults to `awscred.credentialsCallChain` below
+  - `regionCallChain`: array of functions to resolve region, defaults to `awscred.regionCallChain` below
 
 All options are also passed to `http.request`, so any standard Node.js HTTP
 options may be used as well.
