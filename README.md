@@ -1,5 +1,5 @@
-aws-credentials
----------------
+awscred
+-------
 
 A small standalone library to resolve AWS credentials and region details
 using, in order: environment variables, INI files, and EC2 metadata (for IAM
@@ -10,9 +10,9 @@ Example
 -------
 
 ```js
-var credentials = require('aws-credentials')
+var awscred = require('awscred')
 
-credentials.load(function(err, data) {
+awscred.load(function(err, data) {
   if (err) throw err
 
   console.log(data.credentials)
@@ -29,8 +29,8 @@ credentials.load(function(err, data) {
 API
 ---
 
-### credentials.load([options], cb)
-### credentials.loadCredentialsAndRegion([options], cb)
+### awscred.load([options], cb)
+### awscred.loadCredentialsAndRegion([options], cb)
 
 Resolves AWS credentials and region details, and calls back with an object containing
 `credentials` and `region` properties as highlighted in the example above.
@@ -52,32 +52,32 @@ The following environment variables are checked by default:
   - `AWS_REGION`, `AMAZON_REGION`, `AWS_DEFAULT_REGION`
   - `AWS_PROFILE`, `AMAZON_PROFILE`
 
-### credentials.loadCredentials([options], cb)
+### awscred.loadCredentials([options], cb)
 
 As above, but only resolves credentials, does not look up region. Calls
 back with just the credentials object (containing `accessKeyId`,
 `secretAccessKey`, and optionally `sessionToken` and `expiration` properties).
 
-### credentials.loadRegion([options], cb)
+### awscred.loadRegion([options], cb)
 
 As above, but only resolves region, does not look up credentials. Calls
 back with just the region string.
 
-### credentials.credentialsCallChain
+### awscred.credentialsCallChain
 
 The array of credential loading functions used to determine call order. By default:
 `[loadCredentialsFromEnv, loadCredentialsFromIniFile, loadCredentialsFromEc2Metadata]`
 
-### credentials.regionCallChain
+### awscred.regionCallChain
 
 The array of region loading functions used to determine call order. By default:
 `[loadRegionFromEnv, loadRegionFromIniFile]`
 
-### credentials.loadCredentialsFromEnv
-### credentials.loadRegionFromEnv
-### credentials.loadCredentialsFromIniFile
-### credentials.loadRegionFromIniFile
-### credentials.loadCredentialsFromEc2Metadata
-### credentials.loadProfileFromIniFile
+### awscred.loadCredentialsFromEnv
+### awscred.loadRegionFromEnv
+### awscred.loadCredentialsFromIniFile
+### awscred.loadRegionFromIniFile
+### awscred.loadCredentialsFromEc2Metadata
+### awscred.loadProfileFromIniFile
 
 Individual methods to load credentials and region from different sources
