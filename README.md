@@ -83,3 +83,8 @@ The array of region loading functions used to determine call order. By default:
 ### awscred.loadProfileFromIniFile
 
 Individual methods to load credentials and region from different sources
+
+### awscred.merge(obj, [options], cb)
+
+Populates the `region` and `credentials` properties of `obj` using the
+appropriate `load` method – depending on whether they're already set or not.

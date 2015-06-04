@@ -23,6 +23,7 @@ exports.loadCredentialsFromIniFile = loadCredentialsFromIniFile
 exports.loadRegionFromIniFile = loadRegionFromIniFile
 exports.loadCredentialsFromEc2Metadata = loadCredentialsFromEc2Metadata
 exports.loadProfileFromIniFile = loadProfileFromIniFile
+exports.merge = merge
 
 function loadCredentialsAndRegion(options, cb) {
   if (!cb) { cb = options; options = {} }
@@ -173,6 +174,41 @@ function loadProfileFromIniFile(options, defaultFilename, cb) {
     if (err && err.code == 'ENOENT') return cb(null, {})
     if (err) return cb(err)
     cb(null, parseAwsIni(data)[profile] || {})
+  })
+}
+
+function merge(obj, options, cb) {
+  if (!cb) { cb = options; options = {} }
+
+  var needRegion = !obj.region
+  var needCreds = !obj.credentials || !obj.credentials.accessKeyId || !obj.credentials.secretAccessKey
+
+  function loadCreds(cb) {
+    if (needRegion && needCreds) {
+      return loadCredentialsAndRegion(options, cb)
+    } else if (needRegion) {
+      return loadRegion(options, function(err, region) { cb(err, {region: region}) })
+    } else if (needCreds) {
+      return loadCredentials(options, function(err, credentials) { cb(err, {credentials: credentials}) })
+    }
+    cb(null, {})
+  }
+
+  loadCreds(function(err, creds) {
+    if (err) return cb(err)
+
+    if (creds.region) obj.region = creds.region
+    if (creds.credentials) {
+      if (!obj.credentials) {
+        obj.credentials = creds.credentials
+      } else {
+        Object.keys(creds.credentials).forEach(function(key) {
+          if (!obj.credentials[key]) obj.credentials[key] = creds.credentials[key]
+        })
+      }
+    }
+
+    cb()
   })
 }
 
