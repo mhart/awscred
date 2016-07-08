@@ -17,12 +17,16 @@ exports.regionCallChain = [
 exports.load = exports.loadCredentialsAndRegion = loadCredentialsAndRegion
 exports.loadCredentials = loadCredentials
 exports.loadRegion = loadRegion
+exports.loadRegionSync = loadRegionSync
 exports.loadCredentialsFromEnv = loadCredentialsFromEnv
 exports.loadRegionFromEnv = loadRegionFromEnv
+exports.loadRegionFromEnvSync = loadRegionFromEnvSync
 exports.loadCredentialsFromIniFile = loadCredentialsFromIniFile
 exports.loadRegionFromIniFile = loadRegionFromIniFile
+exports.loadRegionFromIniFileSync = loadRegionFromIniFileSync
 exports.loadCredentialsFromEc2Metadata = loadCredentialsFromEc2Metadata
 exports.loadProfileFromIniFile = loadProfileFromIniFile
+exports.loadProfileFromIniFileSync = loadProfileFromIniFileSync
 exports.merge = merge
 
 function loadCredentialsAndRegion(options, cb) {
@@ -84,6 +88,10 @@ function loadRegion(options, cb) {
   nextCall(0)
 }
 
+function loadRegionSync(options) {
+  return loadRegionFromEnvSync(options) || loadRegionFromIniFileSync(options)
+}
+
 function loadCredentialsFromEnv(options, cb) {
   if (!cb) { cb = options; options = {} }
 
@@ -97,7 +105,11 @@ function loadCredentialsFromEnv(options, cb) {
 function loadRegionFromEnv(options, cb) {
   if (!cb) { cb = options; options = {} }
 
-  cb(null, env.AWS_REGION || env.AMAZON_REGION || env.AWS_DEFAULT_REGION)
+  cb(null, loadRegionFromEnvSync())
+}
+
+function loadRegionFromEnvSync() {
+  return env.AWS_REGION || env.AMAZON_REGION || env.AWS_DEFAULT_REGION
 }
 
 function loadCredentialsFromIniFile(options, cb) {
@@ -120,6 +132,10 @@ function loadRegionFromIniFile(options, cb) {
     if (err) return cb(err)
     cb(null, profile.region)
   })
+}
+
+function loadRegionFromIniFileSync(options) {
+  return loadProfileFromIniFileSync(options || {}, 'config').region
 }
 
 var TIMEOUT_CODES = ['ECONNRESET', 'ETIMEDOUT', 'EHOSTUNREACH', 'Unknown system errno 64']
@@ -175,6 +191,21 @@ function loadProfileFromIniFile(options, defaultFilename, cb) {
     if (err) return cb(err)
     cb(null, parseAwsIni(data)[profile] || {})
   })
+}
+
+function loadProfileFromIniFileSync(options, defaultFilename) {
+  var filename = options.filename || path.join(resolveHome(), '.aws', defaultFilename),
+      profile = options.profile || resolveProfile(),
+      data
+
+  try {
+    data = fs.readFileSync(filename, 'utf8')
+  } catch (err) {
+    if (err.code == 'ENOENT') return {}
+    throw err
+  }
+
+  return parseAwsIni(data)[profile] || {}
 }
 
 function merge(obj, options, cb) {

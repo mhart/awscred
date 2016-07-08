@@ -26,6 +26,15 @@ awscred.load(function(err, data) {
 })
 ```
 
+Or just load the region, synchronously:
+
+```js
+console.log(awscred.loadRegionSync())
+// us-east-1
+```
+
+
+
 API
 ---
 
@@ -65,6 +74,10 @@ back with just the credentials object (containing `accessKeyId`,
 As above, but only resolves region, does not look up credentials. Calls
 back with just the region string.
 
+### awscred.loadRegionSync([options])
+
+As above, but returns the region directly from this function using synchronous calls.
+
 ### awscred.credentialsCallChain
 
 The array of credential loading functions used to determine call order. By default:
@@ -77,10 +90,13 @@ The array of region loading functions used to determine call order. By default:
 
 ### awscred.loadCredentialsFromEnv
 ### awscred.loadRegionFromEnv
+### awscred.loadRegionFromEnvSync
 ### awscred.loadCredentialsFromIniFile
 ### awscred.loadRegionFromIniFile
+### awscred.loadRegionFromIniFileSync
 ### awscred.loadCredentialsFromEc2Metadata
 ### awscred.loadProfileFromIniFile
+### awscred.loadProfileFromIniFileSync
 
 Individual methods to load credentials and region from different sources
 
