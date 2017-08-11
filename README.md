@@ -46,7 +46,7 @@ Resolves AWS credentials and region details, and calls back with an object conta
 
 `options` include:
 
-  - `filename`: the name of the INI file to parse, defaults to `'~/.aws/config'`
+  - `filename`: the name of the INI file to parse, defaults to `'~/.aws/credentials'` for credentials and `'~/.aws/config'` for region
   - `profile`: the name of the INI profile to use, defaults to `'default'`
   - `timeout`: the ms timeout on the http call to the EC2 metadata service, defaults to `5000`
   - `credentialsCallChain`: array of functions to resolve credentials, defaults to `awscred.credentialsCallChain` below
