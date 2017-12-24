@@ -7,6 +7,7 @@ exports.credentialsCallChain = [
   loadCredentialsFromEnv,
   loadCredentialsFromIniFile,
   loadCredentialsFromEc2Metadata,
+  loadCredentialsFromEcs,
 ]
 
 exports.regionCallChain = [
@@ -140,6 +141,43 @@ function loadRegionFromIniFileSync(options) {
 
 var TIMEOUT_CODES = ['ECONNRESET', 'ETIMEDOUT', 'EHOSTUNREACH', 'Unknown system errno 64']
 var ec2Callbacks = []
+var ecsCallbacks = []
+
+function loadCredentialsFromEcs(options, cb) {
+  if (!cb) { cb = options; options = {} }
+
+  ecsCallbacks.push(cb)
+  if (ecsCallbacks.length > 1) return // only want one caller at a time
+
+  cb = function(err, credentials) {
+    ecsCallbacks.forEach(function(cb) { cb(err, credentials) })
+    ecsCallbacks = []
+  }
+
+  if (options.timeout == null) options.timeout = 5000
+  options.host = '169.254.170.2'
+  options.path = process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI
+
+  return request(options, function(err, res, data) {    
+    if (err && ~TIMEOUT_CODES.indexOf(err.code)) return cb(null, {})
+    if (err) return cb(err)
+
+    if (res.statusCode != 200)
+      return cb(new Error('Failed to fetch IAM role: ' + res.statusCode + ' ' + data))
+
+    try { data = JSON.parse(data) } catch (e) { }
+
+    if (res.statusCode != 200)
+      return cb(new Error('Failed to fetch IAM credentials: ' + res.statusCode + ' ' + data))    
+
+    cb(null, {
+      accessKeyId: data.AccessKeyId,
+      secretAccessKey: data.SecretAccessKey,
+      sessionToken: data.Token,
+      expiration: new Date(data.Expiration),
+    })
+  })
+}
 
 function loadCredentialsFromEc2Metadata(options, cb) {
   if (!cb) { cb = options; options = {} }
