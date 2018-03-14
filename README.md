@@ -2,9 +2,9 @@ awscred
 -------
 
 A small standalone library to resolve AWS credentials and region details
-using, in order: environment variables, INI files, and EC2 metadata (for IAM
-roles). Queues HTTP calls to ensure no thundering herd effect will occur when
-credentials expire.
+using, in order: environment variables, INI files, and HTTP calls (either to
+EC2 metadata or ECS endpoints, depending on environment).  Queues HTTP calls to
+ensure no thundering herd effect will occur when credentials expire.
 
 Example
 -------
@@ -23,6 +23,20 @@ awscred.load(function(err, data) {
 
   console.log(data.region)
   // us-east-1
+})
+```
+
+Or just load the credentials, if you know the region already:
+
+```js
+awscred.loadCredentials(function(err, data) {
+  if (err) throw err
+
+  console.log(data)
+  // { accessKeyId: 'ABC',
+  //   secretAccessKey: 'DEF',
+  //   sessionToken: 'GHI',
+  //   expiration: Sat Apr 25 2015 01:16:01 GMT+0000 (UTC) }
 })
 ```
 
@@ -48,7 +62,7 @@ Resolves AWS credentials and region details, and calls back with an object conta
 
   - `filename`: the name of the INI file to parse, defaults to `'~/.aws/credentials'` for credentials and `'~/.aws/config'` for region
   - `profile`: the name of the INI profile to use, defaults to `'default'`
-  - `timeout`: the ms timeout on the http call to the EC2 metadata service, defaults to `5000`
+  - `timeout`: the ms timeout on the http call to the EC2 or ECS metadata service, defaults to `5000`
   - `credentialsCallChain`: array of functions to resolve credentials, defaults to `awscred.credentialsCallChain` below
   - `regionCallChain`: array of functions to resolve region, defaults to `awscred.regionCallChain` below
 
@@ -81,7 +95,7 @@ As above, but returns the region directly from this function using synchronous c
 ### awscred.credentialsCallChain
 
 The array of credential loading functions used to determine call order. By default:
-`[loadCredentialsFromEnv, loadCredentialsFromIniFile, loadCredentialsFromEc2Metadata]`
+`[loadCredentialsFromEnv, loadCredentialsFromIniFile, loadCredentialsFromHttp]`
 
 ### awscred.regionCallChain
 
@@ -94,11 +108,16 @@ The array of region loading functions used to determine call order. By default:
 ### awscred.loadCredentialsFromIniFile
 ### awscred.loadRegionFromIniFile
 ### awscred.loadRegionFromIniFileSync
+### awscred.loadCredentialsFromHttp
 ### awscred.loadCredentialsFromEc2Metadata
+### awscred.loadCredentialsFromEcs
 ### awscred.loadProfileFromIniFile
 ### awscred.loadProfileFromIniFileSync
 
-Individual methods to load credentials and region from different sources
+Individual methods to load credentials and region from different sources.
+`loadCredentialsFromHttp` will choose between `loadCredentialsFromEc2Metadata`
+and `loadCredentialsFromEcs` depending on whether the
+`AWS_CONTAINER_CREDENTIALS_RELATIVE_URI` environment variable is set (as it is on ECS).
 
 ### awscred.merge(obj, [options], cb)
 
