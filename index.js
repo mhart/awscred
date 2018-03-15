@@ -3,6 +3,9 @@ var fs = require('fs'),
     http = require('http'),
     env = process.env
 
+var TIMEOUT_CODES = ['ECONNRESET', 'ETIMEDOUT', 'EHOSTUNREACH', 'Unknown system errno 64']
+var httpCallbacks = []
+
 exports.credentialsCallChain = [
   loadCredentialsFromEnv,
   loadCredentialsFromIniFile,
@@ -140,10 +143,6 @@ function loadRegionFromIniFileSync(options) {
   return loadProfileFromIniFileSync(options || {}, 'config').region
 }
 
-var TIMEOUT_CODES = ['ECONNRESET', 'ETIMEDOUT', 'EHOSTUNREACH', 'Unknown system errno 64']
-var ec2Callbacks = []
-var ecsCallbacks = []
-
 function loadCredentialsFromHttp(options, cb) {
   return process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI ?
     loadCredentialsFromEcs(options, cb) : loadCredentialsFromEc2Metadata(options, cb)
@@ -152,33 +151,65 @@ function loadCredentialsFromHttp(options, cb) {
 function loadCredentialsFromEc2Metadata(options, cb) {
   if (!cb) { cb = options; options = {} }
 
-  ec2Callbacks.push(cb)
-  if (ec2Callbacks.length > 1) return // only want one caller at a time
-
-  cb = function(err, credentials) {
-    ec2Callbacks.forEach(function(cb) { cb(err, credentials) })
-    ec2Callbacks = []
-  }
-
-  if (options.timeout == null) options.timeout = 5000
   options.host = '169.254.169.254'
-  options.path = '/latest/meta-data/iam/security-credentials/'
+  options.resolvePath = function(options, cb) {
+    options.path = '/latest/meta-data/iam/security-credentials/'
 
-  return request(options, function(err, res, data) {
-    if (err && ~TIMEOUT_CODES.indexOf(err.code)) return cb(null, {})
-    if (err) return cb(err)
-
-    if (res.statusCode != 200)
-      return cb(new Error('Failed to fetch IAM role: ' + res.statusCode + ' ' + data))
-
-    options.path += data.split('\n')[0]
     request(options, function(err, res, data) {
       if (err) return cb(err)
 
+      if (res.statusCode == 404)
+        return cb(new Error('Could not find IAM role. Check that you assigned an IAM role to your EC2 instance'))
+
+      if (res.statusCode != 200)
+        return cb(new Error('Failed to fetch IAM role: ' + res.statusCode + ' ' + data))
+
+      cb(null, options.path + data.split('\n')[0])
+    })
+  }
+
+  requestCredentials(options, cb)
+}
+
+function loadCredentialsFromEcs(options, cb) {
+  if (!cb) { cb = options; options = {} }
+
+  options.host = '169.254.170.2'
+  options.resolvePath = function(options, cb) {
+    cb(null, process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI)
+  }
+
+  requestCredentials(options, cb)
+}
+
+function requestCredentials(options, cb) {
+  httpCallbacks.push(cb)
+  if (httpCallbacks.length > 1) return // only want one caller at a time
+
+  cb = function(err, credentials) {
+    httpCallbacks.forEach(function(cb) { cb(err, credentials) })
+    httpCallbacks = []
+  }
+
+  if (options.timeout == null) options.timeout = 5000
+
+  options.resolvePath(options, function(err, path) {
+    if (err && ~TIMEOUT_CODES.indexOf(err.code)) return cb(null, {})
+    if (err) return cb(err)
+
+    options.path = path
+
+    request(options, function(err, res, data) {
+      if (err && ~TIMEOUT_CODES.indexOf(err.code)) return cb(null, {})
+      if (err) return cb(err)
+
+      if (res.statusCode != 200)
+        return cb(new Error('Failed to fetch IAM credentials: ' + res.statusCode + ' ' + data))
+
       try { data = JSON.parse(data) } catch (e) { }
 
-      if (res.statusCode != 200 || data.Code != 'Success')
-        return cb(new Error('Failed to fetch IAM credentials: ' + res.statusCode + ' ' + data))
+      if (!data.AccessKeyId)
+        return cb(new Error('Failed to fetch IAM credentials: ' + JSON.stringify(data)))
 
       cb(null, {
         accessKeyId: data.AccessKeyId,
@@ -186,39 +217,6 @@ function loadCredentialsFromEc2Metadata(options, cb) {
         sessionToken: data.Token,
         expiration: new Date(data.Expiration),
       })
-    })
-  })
-}
-
-function loadCredentialsFromEcs(options, cb) {
-  if (!cb) { cb = options; options = {} }
-
-  ecsCallbacks.push(cb)
-  if (ecsCallbacks.length > 1) return // only want one caller at a time
-
-  cb = function(err, credentials) {
-    ecsCallbacks.forEach(function(cb) { cb(err, credentials) })
-    ecsCallbacks = []
-  }
-
-  if (options.timeout == null) options.timeout = 5000
-  options.host = '169.254.170.2'
-  options.path = process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI
-
-  return request(options, function(err, res, data) {
-    if (err && ~TIMEOUT_CODES.indexOf(err.code)) return cb(null, {})
-    if (err) return cb(err)
-
-    if (res.statusCode != 200)
-      return cb(new Error('Failed to fetch IAM credentials: ' + res.statusCode + ' ' + data))
-
-    try { data = JSON.parse(data) } catch (e) { }
-
-    cb(null, {
-      accessKeyId: data.AccessKeyId,
-      secretAccessKey: data.SecretAccessKey,
-      sessionToken: data.Token,
-      expiration: new Date(data.Expiration),
     })
   })
 }
