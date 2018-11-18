@@ -228,7 +228,8 @@ function loadProfileFromIniFile(options, defaultFilename, cb) {
   fs.readFile(filename, 'utf8', function(err, data) {
     if (err && err.code == 'ENOENT') return cb(null, {})
     if (err) return cb(err)
-    cb(null, parseAwsIni(data)[profile] || {})
+    var parsedIni = parseAwsIni(data)
+    cb(null, parsedIni['profile ' + profile] || parsedIni[profile] || {})
   })
 }
 
@@ -244,7 +245,8 @@ function loadProfileFromIniFileSync(options, defaultFilename) {
     throw err
   }
 
-  return parseAwsIni(data)[profile] || {}
+  var parsedIni = parseAwsIni(data)
+  return parsedIni['profile ' + profile] || parsedIni[profile] || {}
 }
 
 function merge(obj, options, cb) {
