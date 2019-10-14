@@ -1,7 +1,7 @@
-var fs = require('fs'),
-    path = require('path'),
-    http = require('http'),
-    env = process.env
+var fs = require('fs')
+var path = require('path')
+var http = require('http')
+var env = process.env
 
 var TIMEOUT_CODES = ['ECONNRESET', 'ETIMEDOUT', 'EHOSTUNREACH', 'Unknown system errno 64']
 var httpCallbacks = []
@@ -38,7 +38,8 @@ function loadCredentialsAndRegion(options, cb) {
   if (!cb) { cb = options; options = {} }
   cb = once(cb)
 
-  var out = {}, callsRemaining = 2
+  var out = {}
+  var callsRemaining = 2
 
   function checkDone(propName) {
     return function(err, data) {
@@ -61,11 +62,13 @@ function loadCredentials(options, cb) {
     credentialsCallChain[i](options, function(err, credentials) {
       if (err) return cb(err)
 
-      if (credentials.accessKeyId && credentials.secretAccessKey)
+      if (credentials.accessKeyId && credentials.secretAccessKey) {
         return cb(null, credentials)
+      }
 
-      if (i >= credentialsCallChain.length - 1)
+      if (i >= credentialsCallChain.length - 1) {
         return cb(null, {})
+      }
 
       nextCall(i + 1)
     })
@@ -81,11 +84,13 @@ function loadRegion(options, cb) {
     regionCallChain[i](options, function(err, region) {
       if (err) return cb(err)
 
-      if (region)
+      if (region) {
         return cb(null, region)
+      }
 
-      if (i >= regionCallChain.length - 1)
+      if (i >= regionCallChain.length - 1) {
         return cb(null, 'us-east-1')
+      }
 
       nextCall(i + 1)
     })
@@ -122,10 +127,20 @@ function loadCredentialsFromIniFile(options, cb) {
 
   loadProfileFromIniFile(options, 'credentials', function(err, profile) {
     if (err) return cb(err)
-    cb(null, {
-      accessKeyId: profile.aws_access_key_id,
-      secretAccessKey: profile.aws_secret_access_key,
-      sessionToken: profile.aws_session_token,
+    if (profile.aws_access_key_id) {
+      return cb(null, {
+        accessKeyId: profile.aws_access_key_id,
+        secretAccessKey: profile.aws_secret_access_key,
+        sessionToken: profile.aws_session_token,
+      })
+    }
+    loadProfileFromIniFile(options, 'config', function(err, profile) {
+      if (err) return cb(err)
+      cb(null, {
+        accessKeyId: profile.aws_access_key_id,
+        secretAccessKey: profile.aws_secret_access_key,
+        sessionToken: profile.aws_session_token,
+      })
     })
   })
 }
@@ -133,14 +148,19 @@ function loadCredentialsFromIniFile(options, cb) {
 function loadRegionFromIniFile(options, cb) {
   if (!cb) { cb = options; options = {} }
 
-  loadProfileFromIniFile(options, 'config', function(err, profile) {
+  loadProfileFromIniFile(options, 'credentials', function(err, profile) {
     if (err) return cb(err)
-    cb(null, profile.region)
+    if (profile.region) return cb(null, profile.region)
+    loadProfileFromIniFile(options, 'config', function(err, profile) {
+      if (err) return cb(err)
+      cb(null, profile.region)
+    })
   })
 }
 
 function loadRegionFromIniFileSync(options) {
-  return loadProfileFromIniFileSync(options || {}, 'config').region
+  return loadProfileFromIniFileSync(options || {}, 'credentials').region ||
+    loadProfileFromIniFileSync(options || {}, 'config').region
 }
 
 function loadCredentialsFromHttp(options, cb) {
@@ -158,11 +178,13 @@ function loadCredentialsFromEc2Metadata(options, cb) {
     request(options, function(err, res, data) {
       if (err) return cb(err)
 
-      if (res.statusCode == 404)
+      if (res.statusCode === 404) {
         return cb(new Error('Could not find IAM role. Check that you assigned an IAM role to your EC2 instance'))
+      }
 
-      if (res.statusCode != 200)
+      if (res.statusCode !== 200) {
         return cb(new Error('Failed to fetch IAM role: ' + res.statusCode + ' ' + data))
+      }
 
       cb(null, options.path + data.split('\n')[0])
     })
@@ -203,13 +225,15 @@ function requestCredentials(options, cb) {
       if (err && ~TIMEOUT_CODES.indexOf(err.code)) return cb(null, {})
       if (err) return cb(err)
 
-      if (res.statusCode != 200)
+      if (res.statusCode !== 200) {
         return cb(new Error('Failed to fetch IAM credentials: ' + res.statusCode + ' ' + data))
+      }
 
       try { data = JSON.parse(data) } catch (e) { }
 
-      if (!data.AccessKeyId)
+      if (!data.AccessKeyId) {
         return cb(new Error('Failed to fetch IAM credentials: ' + JSON.stringify(data)))
+      }
 
       cb(null, {
         accessKeyId: data.AccessKeyId,
@@ -222,11 +246,11 @@ function requestCredentials(options, cb) {
 }
 
 function loadProfileFromIniFile(options, defaultFilename, cb) {
-  var filename = options.filename || path.join(resolveHome(), '.aws', defaultFilename),
-      profile = options.profile || resolveProfile()
+  var filename = options.filename || path.join(resolveHome(), '.aws', defaultFilename)
+  var profile = options.profile || resolveProfile()
 
   fs.readFile(filename, 'utf8', function(err, data) {
-    if (err && err.code == 'ENOENT') return cb(null, {})
+    if (err && err.code === 'ENOENT') return cb(null, {})
     if (err) return cb(err)
     var parsedIni = parseAwsIni(data)
     cb(null, parsedIni['profile ' + profile] || parsedIni[profile] || {})
@@ -234,14 +258,14 @@ function loadProfileFromIniFile(options, defaultFilename, cb) {
 }
 
 function loadProfileFromIniFileSync(options, defaultFilename) {
-  var filename = options.filename || path.join(resolveHome(), '.aws', defaultFilename),
-      profile = options.profile || resolveProfile(),
-      data
+  var filename = options.filename || path.join(resolveHome(), '.aws', defaultFilename)
+  var profile = options.profile || resolveProfile()
+  var data
 
   try {
     data = fs.readFileSync(filename, 'utf8')
   } catch (err) {
-    if (err.code == 'ENOENT') return {}
+    if (err.code === 'ENOENT') return {}
     throw err
   }
 
@@ -259,9 +283,9 @@ function merge(obj, options, cb) {
     if (needRegion && needCreds) {
       return loadCredentialsAndRegion(options, cb)
     } else if (needRegion) {
-      return loadRegion(options, function(err, region) { cb(err, {region: region}) })
+      return loadRegion(options, function(err, region) { cb(err, { region: region }) })
     } else if (needCreds) {
-      return loadCredentials(options, function(err, credentials) { cb(err, {credentials: credentials}) })
+      return loadCredentials(options, function(err, credentials) { cb(err, { credentials: credentials }) })
     }
     cb(null, {})
   }
@@ -294,10 +318,10 @@ function resolveHome() {
 
 // Fairly strict INI parser – will only deal with alpha keys, must be within sections
 function parseAwsIni(ini) {
-  var section,
-      out = Object.create(null),
-      re = /^\[([^\]]+)\]\s*$|^([a-z_]+)\s*=\s*(.+?)\s*$/,
-      lines = ini.split(/\r?\n/)
+  var section
+  var out = Object.create(null)
+  var re = /^\[([^\]]+)\]\s*$|^([a-z_]+)\s*=\s*(.+?)\s*$/
+  var lines = ini.split(/\r?\n/)
 
   lines.forEach(function(line) {
     var match = line.match(re)
