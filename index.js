@@ -99,7 +99,7 @@ function loadRegion(options, cb) {
 }
 
 function loadRegionSync(options) {
-  return loadRegionFromEnvSync(options) || loadRegionFromIniFileSync(options)
+  return loadRegionFromEnvSync() || loadRegionFromIniFileSync(options)
 }
 
 function loadCredentialsFromEnv(options, cb) {
